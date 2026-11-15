@@ -1,0 +1,17 @@
+import InfoPage from '@/components/InfoPage';
+import {getCurrentPrivacyPolicy} from '@/lib/managed-notice-policy';
+
+export const dynamic='force-dynamic';
+
+export default async function Privacy(){
+  const managedPolicy=await getCurrentPrivacyPolicy();
+  if(managedPolicy?.version)return <InfoPage eyebrow={`Privacy Policy · Version ${managedPolicy.version}`} title={managedPolicy.title} lead="Current published Privacy Policy." updated={managedPolicy.publishedAt?.toLocaleDateString()||managedPolicy.updatedAt.toLocaleDateString()} importantNote="" sections={[
+    {title:'Privacy Policy',content:<p className="managed-policy-copy">{managedPolicy.content}</p>},
+  ]}/>;
+  return <InfoPage eyebrow="Your information" title="Privacy overview" lead="A plain-language summary of information handled by the current Aurevia Exchange application." updated="October 27, 2026" importantNote="Identity documents are stored in the configured private storage service and made available through authorized, short-lived links. Review the privacy and retention terms for your deployment before submitting real identity information." sections={[
+    {title:'Information entered',content:<p>Account registration and profile forms can collect a name, email address, country, phone number, and the account password in hashed form. REAL-mode identity verification redirects users to Didit, which processes identity information and, where required by its configured verification workflow, biometric data. Aurevia stores the Didit session, status, and decision response. Users may separately submit proof-of-address files for private administrator review. Avoid submitting personal identity details in an evaluation or test deployment.</p>},
+    {title:'How information is used',content:<p>Information is used by the application to authenticate users, display account details, associate ledger and trading records with an account, and allow administrators to review supported verification and funding requests.</p>},
+    {title:'Storage and service providers',content:<p>Account, identity, and activity records are stored in the configured application database. Didit receives identity information through its hosted verification service and returns verification results to Aurevia. Proof-of-address files use a private object-storage bucket; access is owner-scoped or administrator-authorized and delivered through short-lived links. When REAL-mode sandbox order routing is enabled, order details are sent to Alpaca. These implementation details do not define a deployment's full retention schedule, backups, legal bases, or data-processing terms.</p>},
+    {title:'Questions and formal policy',content:<p>This page is a product summary, not a jurisdiction-specific legal privacy notice. Before collecting real customer information, the operator should publish a reviewed policy naming its operating entity and contact channel and explaining retention, legal bases, applicable user rights, and the service providers used in that deployment.</p>},
+  ]}/>;
+}
