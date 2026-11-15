@@ -435,7 +435,7 @@ export default function RegistrationExperience({turnstileSiteKey}:{turnstileSite
 
 	return <main className="registration-app">
 		<header className="registration-mobile-header">
-			<Link href="/" className="registration-brand" aria-label="Aurevia Exchange home">
+			<Link href="/" className="registration-brand">
 				<Image src="/aurevia-logo.png" alt="" width={39} height={39}/>
 				<span><b>Aurevia</b><small>EXCHANGE</small></span>
 			</Link>
@@ -443,7 +443,7 @@ export default function RegistrationExperience({turnstileSiteKey}:{turnstileSite
 		</header>
 		<div className="registration-layout">
 			<aside className="registration-intro" aria-label="About Aurevia account setup">
-				<Link href="/" className="registration-brand registration-desktop-brand" aria-label="Aurevia Exchange home">
+				<Link href="/" className="registration-brand registration-desktop-brand">
 					<Image src="/aurevia-logo.png" alt="" width={48} height={48}/>
 					<span><b>Aurevia</b><small>EXCHANGE</small></span>
 				</Link>

@@ -37,13 +37,13 @@ test.describe('public routes and responsive layout',()=>{
 						const response=await page.goto(path);
 						expect(response?.status(),route).toBe(200);
 						await expect(page.locator('html'),`${route} (${theme})`).toHaveAttribute('data-theme-name',theme);
-						await expect(page.locator('h1').first(),route).toBeVisible();
+						await expect(page.locator('h1:visible').first(),route).toBeVisible();
 						if(route==='/admin/login')await expect(page.locator('.admin-login-card')).toBeVisible();
 						if(route==='/markets')await expect(page.getByRole('heading',{name:'Markets',exact:true})).toBeVisible();
 						if(route==='/support')await expect(page.getByRole('heading',{name:'Nova AI',exact:true})).toBeVisible();
 						if(route==='/register'){
-							await expect(page.getByRole('heading',{name:'Create your Aurevia account'})).toBeVisible();
-							await expect(page.getByLabel('First name')).toBeVisible();
+							await expect(page.getByRole('heading',{name:viewport.width<=680?'Create your Aurevia account':'Welcome to Aurevia Exchange.'})).toBeVisible();
+							await expect(page.getByRole('textbox',{name:'First name'})).toBeVisible();
 						}
 						await expectNoHorizontalOverflow(page);
 					});

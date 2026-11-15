@@ -84,7 +84,7 @@ async function completeRegistrationToReview(page:Page,options:{email:string;firs
 	}));
 	const country=options.country||'United States';
 	const code=options.countryCode||'US';
-	await page.getByLabel('First name').fill(options.firstName||'Temporary');
+	await page.getByRole('textbox',{name:'First name'}).fill(options.firstName||'Temporary');
 	await page.getByLabel('Last name').fill(options.lastName||'Browser Test');
 	await page.locator('input[type="date"]').fill('2000-02-29');
 	await selectRegistrationCountry(page,/country of residence/i,country,code,code==='GB'?'+44':'+1');
@@ -385,7 +385,7 @@ test('provider health distinguishes sandbox routing from disabled live services'
 	await expect(page.getByText(/When enabled, REAL-mode orders use this shared Alpaca sandbox account/)).toBeVisible();
 });
 
-test('Didit is the active identity flow and legacy manual submissions are retired',async({page})=>{
+test('Aurevia Verify is first-party and disabled Didit and legacy upload flows fail closed',async({page})=>{
 	await loginAs(page,fixture('USER_EMAIL'),fixture('USER_PASSWORD'));
 	await page.goto('/kyc');
 	await expect(page.getByRole('heading',{name:'REAL mode required'})).toBeVisible();
@@ -396,11 +396,16 @@ test('Didit is the active identity flow and legacy manual submissions are retire
 	await expect(page.getByRole('progressbar',{name:'Account tier progression'})).toBeVisible();
 	await selectAccountMode(page,'REAL');
 	await page.goto('/kyc');
-	await expect(page.getByRole('heading',{name:'Didit identity verification'})).toBeVisible();
-	await expect(page.getByRole('checkbox')).not.toBeChecked();
-	await expect(page.getByRole('button',{name:'Start Didit verification'})).toBeDisabled();
-	await page.getByRole('checkbox').check();
-	await expect(page.getByRole('button',{name:'Start Didit verification'})).toBeEnabled();
+	await expect(page.getByRole('heading',{name:'First-party verification centre'})).toBeVisible();
+	await expect(page.getByText(/OCR, government-source authentication, face comparison.*not available/)).toBeVisible();
+	const diditPanel=page.locator('section.account-panel').filter({has:page.getByRole('heading',{name:'Existing Didit verification'})});
+	const diditConsent=diditPanel.getByRole('checkbox');
+	const startDidit=diditPanel.getByRole('button',{name:'Start Didit verification'});
+	await expect(startDidit).toBeDisabled();
+	await diditConsent.check();
+	await expect(startDidit).toBeEnabled();
+	await startDidit.click();
+	await expect(page.locator('.account-callout[role="alert"]')).toContainText('Didit identity verification is not configured');
 	const legacySubmission=await page.request.post('/api/kyc',{data:{
 		legalName:'Manual submission must be retired',
 		dob:'1990-01-01',
@@ -636,7 +641,7 @@ test('login and registration fields receive real pointer and keyboard input',asy
 
 	await page.goto('/register');
 	await waitForStartup(page);
-	await typeInto(page,page.getByLabel('First name'),'Browser');
+	await typeInto(page,page.getByRole('textbox',{name:'First name'}),'Browser');
 	await typeInto(page,page.getByLabel('Last name'),'Input Test');
 	const dateOfBirth=page.getByLabel('Date of birth');
 	await dateOfBirth.click();
@@ -652,7 +657,7 @@ test('login and registration fields receive real pointer and keyboard input',asy
 	await page.getByRole('button',{name:'Continue'}).click();
 	await page.getByRole('radio',{name:/DEMO account/i}).check();
 	await page.getByRole('button',{name:'Continue'}).click();
-	const registrationPassword=page.getByLabel('Password',{exact:true});
+	const registrationPassword=page.getByLabel(/^Password/);
 	await typeInto(page,registrationPassword,'ValidPassword123!');
 	await page.getByRole('button',{name:'Show password'}).first().click();
 	await expect(registrationPassword).toHaveAttribute('type','text');
@@ -1102,7 +1107,7 @@ test('startup releases page interaction if session initialization is delayed',as
 	releaseSession();
 	await expect(page.getByRole('heading',{name:'Welcome back'})).toBeVisible();
 	await page.getByRole('navigation',{name:'Website navigation'}).getByRole('link',{name:'Create an account'}).click();
-	await expect(page.getByRole('heading',{name:'Open an account'})).toBeVisible();
+	await expect(page.getByRole('heading',{name:'Welcome to Aurevia Exchange.'})).toBeVisible();
 	await expect(startup).toBeHidden();
 	await page.goBack();
 	await expect(page.getByRole('heading',{name:'Welcome back'})).toBeVisible();
@@ -1173,10 +1178,18 @@ test('country selector searches Nigeria and United Kingdom and shows their diali
 	await page.setViewportSize({width:320,height:800});
 	await page.goto('/register');
 	await waitForStartup(page);
-	const picker=page.getByRole('button',{name:/phone country and dialing code/i});
-	await expect(picker).toHaveAttribute('aria-label',/Select country/);
+	await page.getByRole('textbox',{name:'First name'}).fill('Country');
+	await page.getByRole('textbox',{name:'Last name'}).fill('Selector');
+	await page.locator('input[type="date"]').fill('1990-01-01');
+	await selectRegistrationCountry(page,/country of residence/i,'United States','US','+1');
+	await page.getByRole('button',{name:'Continue'}).click();
+	await page.getByLabel(/City/).fill('New York');
+	await page.getByLabel(/Street address/).fill('123 Test Street');
+	await page.getByRole('button',{name:'Continue'}).click();
+	const picker=page.getByRole('button',{name:/phone country and calling code/i});
+	await expect(picker).toHaveAttribute('aria-label',/United States \+1/);
 	await picker.click();
-	const dialog=page.getByRole('dialog',{name:'Select phone country and dialing code'});
+	const dialog=page.getByRole('dialog',{name:'Select phone country and calling code'});
 	await expect(dialog).toBeVisible();
 	await expectNoHorizontalOverflow(page);
 	const search=dialog.getByRole('searchbox');
@@ -1188,7 +1201,7 @@ test('country selector searches Nigeria and United Kingdom and shows their diali
 	await page.keyboard.press('Enter');
 	await expect(picker).toHaveAttribute('aria-label',/Nigeria \+234/);
 	await picker.click();
-	const ukDialog=page.getByRole('dialog',{name:'Select phone country and dialing code'});
+	const ukDialog=page.getByRole('dialog',{name:'Select phone country and calling code'});
 	await ukDialog.getByRole('searchbox').fill('United Kingdom');
 	const uk=ukDialog.getByRole('option',{name:/United Kingdom.*GB.*\+44/});
 	await expect(uk).toBeVisible();
@@ -1323,7 +1336,7 @@ test('duplicate signup offers sign-in with the typed email prefilled',async({pag
 	await completeRegistrationToReview(page,{email});
 	await page.getByRole('checkbox',{name:/I confirm that the information supplied/}).check();
 	await page.getByRole('button',{name:'Create account'}).click();
-	await expect(page.getByRole('alert')).toHaveText(/Sign in or reset your password/);
+	await expect(page.locator('.registration-field-error[role="alert"]')).toHaveText(/Sign in or reset your password/);
 	await page.locator('.registration-existing-account').getByRole('link',{name:'Sign in'}).click();
 	await page.waitForURL(/\/login$/);
 	await expect(page.getByLabel('Email address')).toHaveValue(email);
