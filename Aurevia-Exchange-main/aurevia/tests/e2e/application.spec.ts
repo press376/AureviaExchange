@@ -181,9 +181,21 @@ test('current terms acceptance is explicit and persists across refresh, login, a
 	await dialog.getByRole('button',{name:'Accept & Continue'}).click();
 	await expect(dialog).toBeHidden();
 	expect((await page.request.get('/api/dashboard/overview')).status()).toBe(200);
+	const deviceMarker=await page.evaluate(()=>{
+		const key=Object.keys(localStorage).find(item=>item.startsWith('aurevia-policy-consent:v1:'));
+		return key?JSON.parse(localStorage.getItem(key)||'null') as {documents?:Array<{documentKey:string;version:string;acceptedAt:string}>}:null;
+	});
+	expect(deviceMarker?.documents?.some(document=>document.documentKey==='TERMS_AND_CONDITIONS'&&document.version===currentVersion&&Date.parse(document.acceptedAt)>0)).toBe(true);
 	for(const path of ['/api/support','/api/tax-services/access'])expect((await page.request.get(path)).status()).toBe(200);
 	expect((await page.request.get('/api/theme-preference')).status()).toBe(200);
 
+	await page.locator('a[href="/wallet"]:visible').first().click();
+	await page.waitForURL(/\/wallet$/);
+	await expect(dialog).toBeHidden();
+	await page.locator('a[href="/markets"]:visible').first().click();
+	await page.waitForURL(/\/markets$/);
+	await expect(dialog).toBeHidden();
+	await page.goto('/dashboard');
 	const saved=await page.request.get('/api/policy-consent').then(response=>response.json());
 	expect(saved).toMatchObject({version:currentVersion,accepted:true});
 	expect(Number.isNaN(Date.parse(saved.acceptedAt))).toBe(false);
@@ -208,6 +220,19 @@ test('current terms acceptance is explicit and persists across refresh, login, a
 		await loginAs(secondPage,user.email,user.password,{acceptTerms:false});
 		await expect(secondPage.locator('.policy-consent-dialog')).toBeHidden();
 		expect(await secondPage.request.get('/api/policy-consent').then(response=>response.json())).toMatchObject({accepted:true,version:currentVersion});
+		await secondPage.goto('/dashboard');
+		await secondPage.goto('/wallet');
+		await expect(secondPage.locator('.policy-consent-dialog')).toBeHidden();
+		await secondPage.goto('/markets');
+		await expect(secondPage.locator('.policy-consent-dialog')).toBeHidden();
+		await logout(secondPage);
+		await loginAs(secondPage,fixture('ADMIN_EMAIL'),fixture('ADMIN_PASSWORD'),{acceptTerms:false});
+		await expect(secondPage.locator('.policy-consent-dialog')).toBeHidden();
+		await secondPage.goto('/admin');
+		await secondPage.getByRole('button',{name:'Open admin menu'}).click();
+		await secondPage.getByRole('link',{name:'AI & API command center'}).click();
+		await secondPage.waitForURL(/\/admin\/command-center$/);
+		await expect(secondPage.locator('.policy-consent-dialog')).toBeHidden();
 	}finally{
 		await secondDevice.close();
 	}
@@ -242,6 +267,11 @@ test('updated terms require a separate acceptance and preserve the previous vers
 		expect(records).toHaveLength(2);
 		expect(records.map(record=>record.version)).toEqual([previousVersion,currentVersion].sort());
 		expect(records.find(record=>record.version===previousVersion)?.acceptedAt).toEqual(previousAcceptedAt);
+		await page.reload();
+		await expect(dialog).toBeHidden();
+		await page.goto('/dashboard');
+		await page.goto('/wallet');
+		await expect(dialog).toBeHidden();
 	}finally{
 		await page.goto('about:blank');
 		await db.managedNotice.delete({where:{id:notice.id}});
