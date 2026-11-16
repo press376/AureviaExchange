@@ -15,6 +15,11 @@ function safeProposal(value:string){
 	}catch{return {provider:'unknown',submittedBy:'unknown',submittedAt:null,status:'INVALID'};}
 }
 
+function safeMetadata(value:unknown):Record<string,unknown>{
+	if(!value||typeof value!=='object'||Array.isArray(value))return {};
+	return Object.fromEntries(Object.entries(value));
+}
+
 export async function GET(){
 	try{
 		await requireAdmin();
@@ -28,7 +33,7 @@ export async function GET(){
 			db.systemSetting.findMany({where:{key:{startsWith:prefix}},select:{key:true,value:true},orderBy:{updatedAt:'desc'},take:50}),
 			getAiServiceFeatures(),
 		]);
-		const usage=usageRows.map(row=>({id:row.id,action:row.action,metadata:row.metadata,createdAt:row.createdAt}));
+		const usage=usageRows.map(row=>({id:row.id,action:row.action,metadata:safeMetadata(row.metadata),createdAt:row.createdAt}));
 		const successful=usageRows.filter(row=>row.action==='AI_REQUEST_COMPLETED');
 		const failed=usageRows.length-successful.length;
 		const totalTokens=usageRows.reduce((total,row)=>{
@@ -39,7 +44,7 @@ export async function GET(){
 		return NextResponse.json({
 			checkedAt:new Date().toISOString(),integrations,ai,aiFeatures,
 			usage:{window:'latest 100 records',requests:usageRows.length,succeeded:successful.length,failed,totalTokens,rateLimit:'AI routes apply per-user or per-admin rate limits; provider limits may also apply.',recent:usage},
-			healthHistory:historyRows.map(row=>({id:row.id,action:row.action,metadata:row.metadata,createdAt:row.createdAt})),
+			healthHistory:historyRows.map(row=>({id:row.id,action:row.action,metadata:safeMetadata(row.metadata),createdAt:row.createdAt})),
 			approvalQueue:proposalRows.map(row=>({id:row.key.slice(prefix.length),...safeProposal(row.value)})).filter(proposal=>proposal.status==='PENDING'),
 		},{headers:{'Cache-Control':'private, no-store'}});
 	}catch(error){

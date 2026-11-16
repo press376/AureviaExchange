@@ -62,6 +62,17 @@ describe('admin AI and API command center routes',()=>{
 		expect(JSON.stringify(body)).not.toContain('private-secret');
 	});
 
+	it('normalizes nullable and non-object audit metadata for the command-center UI',async()=>{
+		mocks.auditFindMany.mockImplementation(({where}:{where:{entity:string}})=>Promise.resolve(where.entity==='AI_USAGE'?
+			[{id:'usage-null',action:'AI_REQUEST_FAILED',metadata:null,createdAt:new Date('2026-11-01T00:00:00.000Z')},{id:'usage-array',action:'AI_REQUEST_COMPLETED',metadata:['unexpected'],createdAt:new Date('2026-11-01T00:00:00.000Z')}]:
+			[{id:'health-null',action:'INTEGRATION_HEALTH_CHECK',metadata:null,createdAt:new Date('2026-11-01T00:00:00.000Z')}]));
+		const response=await GET();
+		const body=await response.json();
+		expect(response.status).toBe(200);
+		expect(body.usage.recent.map((event:{metadata:Record<string,unknown>})=>event.metadata)).toEqual([{},{}]);
+		expect(body.healthHistory[0].metadata).toEqual({});
+	});
+
 	it('blocks non-admin integration checks without probing or auditing',async()=>{
 		mocks.requireAdmin.mockRejectedValue(new Error('FORBIDDEN'));
 		const response=await POST(request({integration:'openrouter'}));

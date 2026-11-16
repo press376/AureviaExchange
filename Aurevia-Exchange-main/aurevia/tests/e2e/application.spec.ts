@@ -1394,6 +1394,7 @@ test('administrator sign-in returns to the protected admin page requested before
 	await page.getByRole('button',{name:'Enter control center'}).click();
 	await page.waitForURL(url=>url.pathname==='/admin/command-center');
 	await expect(page.getByRole('heading',{name:'AI & API command center'})).toBeVisible();
+	await expect(page.getByRole('heading',{name:'AI provider health'})).toBeVisible();
 });
 
 test('multiple sessions can be reviewed and other sessions revoked server-side',async({page,browser})=>{
